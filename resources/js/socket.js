@@ -6,64 +6,83 @@ const username = prompt("Enter Device Name");
 
 socket.on("connect", () => {
 
-    console.log("Connected:", socket.id);
-
     socket.emit("register", username);
+
+    console.log("Connected");
 });
 
 socket.on("online-users", (users) => {
 
-    console.log("Online Users:", users);
-
     const usersDiv = document.getElementById('users');
 
-    if (usersDiv) {
+    if (!usersDiv) return;
 
-        usersDiv.innerHTML = '';
+    usersDiv.innerHTML = '';
 
-        users.forEach(user => {
+    users.forEach(user => {
 
-            if (user !== username) {
+        if (user !== username) {
 
-                usersDiv.innerHTML += `
-                    <button
-                        onclick="sendTransfer('${user}')"
-                        style="
-                            display:block;
-                            margin:10px;
-                            padding:15px;
-                            width:250px;
-                            background:#111827;
-                            color:white;
-                            border:none;
-                            border-radius:10px;
-                            cursor:pointer;
-                        "
-                    >
-                        Send File To ${user}
-                    </button>
-                `;
-            }
-        });
-    }
-});
+            const button = document.createElement('button');
 
-window.sendTransfer = function(receiver) {
+            button.innerText = `Send File To ${user}`;
 
-    const fileName = prompt("Enter file name");
+            button.style.display = 'block';
+            button.style.margin = '10px';
+            button.style.padding = '15px';
 
-    socket.emit("send-transfer", {
-        from: username,
-        to: receiver,
-        fileName: fileName
+            button.onclick = async () => {
+
+                const input = document.createElement('input');
+
+                input.type = 'file';
+
+                input.onchange = async (e) => {
+
+                    const file = e.target.files[0];
+
+                    const formData = new FormData();
+
+                    formData.append('file', file);
+
+                    alert('Uploading file...');
+
+                    const response = await fetch(
+                        'http://localhost:3001/upload',
+                        {
+                            method: 'POST',
+                            body: formData
+                        }
+                    );
+
+                    const result = await response.json();
+
+                    socket.emit('send-transfer', {
+                        from: username,
+                        to: user,
+                        fileName: result.fileName,
+                        downloadUrl: result.downloadUrl
+                    });
+
+                    alert('Transfer sent');
+                };
+
+                input.click();
+            };
+
+            usersDiv.appendChild(button);
+        }
     });
-}
+});
 
 socket.on("incoming-transfer", (data) => {
 
-    alert(
-        `Incoming file from ${data.from}\nFile: ${data.fileName}`
+    const confirmDownload = confirm(
+        `Incoming File From ${data.from}\n\n${data.fileName}\n\nDownload?`
     );
 
-    console.log(data);
+    if (confirmDownload) {
+
+        window.open(data.downloadUrl, '_blank');
+    }
 });
