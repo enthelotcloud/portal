@@ -1,5 +1,9 @@
 import { io } from "socket.io-client";
 
+const SERVER_URL = "http://localhost:3001";
+
+const socket = io(SERVER_URL);
+
 const usernameMeta = document.querySelector(
     'meta[name="device-name"]'
 );
@@ -8,153 +12,208 @@ const username = usernameMeta
     ? usernameMeta.content
     : null;
 
-if (username) {
+/*
+|--------------------------------------------------------------------------
+| REGISTER DEVICE
+|--------------------------------------------------------------------------
+*/
 
-    const socket = io("http://localhost:3001");
+if (username) {
 
     socket.on("connect", () => {
 
+        console.log("Connected");
+
         socket.emit("register", username);
     });
+}
 
-    socket.on("online-users", (users) => {
+/*
+|--------------------------------------------------------------------------
+| ONLINE USERS
+|--------------------------------------------------------------------------
+*/
 
-        const usersDiv = document.getElementById('users');
+socket.on("online-users", (users) => {
 
-        if (!usersDiv) return;
+    const usersDiv = document.getElementById("users");
 
-        usersDiv.innerHTML = '';
+    if (!usersDiv) return;
 
-        users.forEach(user => {
+    usersDiv.innerHTML = "";
 
-            if (user !== username) {
+    users.forEach(user => {
 
-                const card = document.createElement('div');
+        if (user !== username) {
 
-                card.className = `
-                    bg-slate-900
-                    border
-                    border-slate-800
-                    rounded-3xl
-                    p-6
-                `;
+            const card = document.createElement("div");
 
-                card.innerHTML = `
-                    <div class="flex items-start justify-between">
+            card.className = `
+                bg-slate-900
+                border
+                border-slate-800
+                rounded-3xl
+                p-6
+            `;
 
-                        <div>
+            card.innerHTML = `
+                <div class="flex items-start justify-between">
 
-                            <h2 class="text-3xl font-black">
-                                ${user}
-                            </h2>
+                    <div>
 
-                            <div class="flex items-center mt-3">
-                                <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                        <h2 class="text-3xl font-black">
+                            ${user}
+                        </h2>
 
-                                <span class="text-slate-400">
-                                    Online
-                                </span>
-                            </div>
+                        <div class="flex items-center mt-3">
+                            <div
+                                class="
+                                    w-3
+                                    h-3
+                                    rounded-full
+                                    bg-green-500
+                                    mr-2
+                                "
+                            ></div>
 
+                            <span class="text-slate-400">
+                                Online
+                            </span>
                         </div>
 
                     </div>
 
-                    <button
-                        class="
-                            send-btn
-                            mt-8
-                            w-full
-                            bg-blue-600
-                            hover:bg-blue-500
-                            transition-all
-                            rounded-2xl
-                            py-4
-                            font-bold
-                            text-lg
-                        "
-                    >
-                        Send File
-                    </button>
-                `;
+                </div>
 
-                const button = card.querySelector('.send-btn');
+                <button
+                    class="
+                        send-btn
+                        mt-8
+                        w-full
+                        bg-blue-600
+                        hover:bg-blue-500
+                        transition-all
+                        rounded-2xl
+                        py-4
+                        font-bold
+                        text-lg
+                    "
+                >
+                    Send File
+                </button>
+            `;
 
-                button.onclick = async () => {
+            /*
+            |--------------------------------------------------------------------------
+            | SEND FILE
+            |--------------------------------------------------------------------------
+            */
 
-                    const input = document.createElement('input');
+            const button = card.querySelector(".send-btn");
 
-                    input.type = 'file';
+            button.onclick = () => {
 
-                    input.onchange = async (e) => {
+                const input = document.createElement("input");
 
-                        const file = e.target.files[0];
+                input.type = "file";
 
-                        const formData = new FormData();
+                input.onchange = async (e) => {
 
-                        formData.append('file', file);
+                    const file = e.target.files[0];
 
-                        button.innerText = 'Uploading...';
+                    if (!file) return;
+
+                    const formData = new FormData();
+
+                    formData.append("file", file);
+
+                    button.innerText = "Uploading...";
+
+                    try {
 
                         const response = await fetch(
-                            'http://localhost:3001/upload',
+                            `${SERVER_URL}/upload`,
                             {
-                                method: 'POST',
+                                method: "POST",
                                 body: formData
                             }
                         );
 
                         const result = await response.json();
 
-                        socket.emit('send-transfer', {
+                        console.log(result);
+
+                        socket.emit("send-transfer", {
                             from: username,
                             to: user,
                             fileName: result.fileName,
                             downloadUrl: result.downloadUrl
                         });
 
-                        button.innerText = 'Transfer Sent';
-                    };
+                        button.innerText = "Transfer Sent";
 
-                    input.click();
+                    } catch (error) {
+
+                        console.error(error);
+
+                        button.innerText = "Failed";
+                    }
                 };
 
-                usersDiv.appendChild(card);
-            }
-        });
-    });
+                input.click();
+            };
 
-    socket.on("incoming-transfer", (data) => {
-
-        const accept = confirm(
-            `Incoming File\n\n${data.fileName}\n\nFrom ${data.from}`
-        );
-
-        if (accept) {
-
-            window.open(data.downloadUrl, '_blank');
+            usersDiv.appendChild(card);
         }
     });
-}
+});
 
-const form = document.getElementById('device-form');
+/*
+|--------------------------------------------------------------------------
+| RECEIVE FILE
+|--------------------------------------------------------------------------
+*/
+
+socket.on("incoming-transfer", (data) => {
+
+    console.log(data);
+
+    const accept = confirm(
+        `Incoming File\n\n${data.fileName}\n\nFrom ${data.from}`
+    );
+
+    if (accept) {
+
+        window.open(data.downloadUrl, "_blank");
+    }
+});
+
+/*
+|--------------------------------------------------------------------------
+| DEVICE FORM
+|--------------------------------------------------------------------------
+*/
+
+const form = document.getElementById("device-form");
 
 if (form) {
 
-    form.addEventListener('submit', async (e) => {
+    form.addEventListener("submit", async (e) => {
 
         e.preventDefault();
 
         const value = document
-            .getElementById('device-input')
+            .getElementById("device-input")
             .value;
 
-        await fetch('/device-name', {
-            method: 'POST',
+        await fetch("/device-name", {
+
+            method: "POST",
 
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document
+                "Content-Type": "application/json",
+
+                "X-CSRF-TOKEN": document
                     .querySelector('meta[name="csrf-token"]')
                     .content
             },
