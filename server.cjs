@@ -91,3 +91,47 @@ app.use('/uploads', express.static(uploadPath));
 server.listen(3001, () => {
     console.log('Server running on port 3001');
 });
+
+/*
+|--------------------------------------------------------------------------
+| AUTO DELETE OLD FILES
+|--------------------------------------------------------------------------
+*/
+
+setInterval(() => {
+
+    fs.readdir(uploadPath, (err, files) => {
+
+        if (err) return;
+
+        files.forEach(file => {
+
+            const filePath = path.join(uploadPath, file);
+
+            fs.stat(filePath, (err, stat) => {
+
+                if (err) return;
+
+                const now = Date.now();
+
+                const fileAge =
+                    now - stat.mtimeMs;
+
+                const sixHours =
+                    6 * 60 * 60 * 1000;
+
+                if (fileAge > sixHours) {
+
+                    fs.unlink(filePath, () => {
+
+                        console.log(
+                            'Deleted:',
+                            file
+                        );
+                    });
+                }
+            });
+        });
+    });
+
+}, 60 * 60 * 1000);

@@ -1,27 +1,39 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, session } = require('electron');
 
-let mainWindow;
+const path = require('path');
 
 function createWindow() {
-    mainWindow = new BrowserWindow({
+
+    const win = new BrowserWindow({
         width: 1400,
-        height: 900,
-        autoHideMenuBar: true,
-        title: 'FileFlow',
-        backgroundColor: '#0f172a',
+        height: 900
     });
 
-    mainWindow.loadURL('https://portal.nyumbaiitutv.co.ke');
+    win.loadURL('https://portal.nyumbaiitutv.co.ke');
 
-    mainWindow.on('closed', function () {
-        mainWindow = null;
-    });
+    /*
+    |--------------------------------------------------------------------------
+    | AUTO DOWNLOADS
+    |--------------------------------------------------------------------------
+    */
+
+    session.defaultSession.on(
+        'will-download',
+        (event, item) => {
+
+            const downloadsPath = path.join(
+                app.getPath('downloads'),
+                item.getFilename()
+            );
+
+            item.setSavePath(downloadsPath);
+
+            console.log(
+                'Downloading:',
+                downloadsPath
+            );
+        }
+    );
 }
 
 app.whenReady().then(createWindow);
-
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
-});
