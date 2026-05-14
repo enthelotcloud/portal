@@ -4,18 +4,16 @@ const socket = io("http://localhost:3001");
 
 const username = prompt("Enter Device Name");
 
+document.getElementById('device-name').innerText = username;
+
 socket.on("connect", () => {
 
     socket.emit("register", username);
-
-    console.log("Connected");
 });
 
 socket.on("online-users", (users) => {
 
     const usersDiv = document.getElementById('users');
-
-    if (!usersDiv) return;
 
     usersDiv.innerHTML = '';
 
@@ -23,13 +21,48 @@ socket.on("online-users", (users) => {
 
         if (user !== username) {
 
-            const button = document.createElement('button');
+            const card = document.createElement('div');
 
-            button.innerText = `Send File To ${user}`;
+            card.className =
+                'bg-slate-900 border border-slate-800 rounded-3xl p-6';
 
-            button.style.display = 'block';
-            button.style.margin = '10px';
-            button.style.padding = '15px';
+            card.innerHTML = `
+                <div class="flex items-center justify-between">
+
+                    <div>
+                        <h2 class="text-2xl font-black">
+                            ${user}
+                        </h2>
+
+                        <div class="flex items-center mt-2">
+                            <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+
+                            <span class="text-slate-400">
+                                Online
+                            </span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <button
+                    class="
+                        mt-8
+                        w-full
+                        bg-blue-600
+                        hover:bg-blue-500
+                        transition
+                        rounded-2xl
+                        py-4
+                        font-bold
+                        text-lg
+                    "
+                >
+                    Send File
+                </button>
+            `;
+
+            const button = card.querySelector('button');
 
             button.onclick = async () => {
 
@@ -45,7 +78,7 @@ socket.on("online-users", (users) => {
 
                     formData.append('file', file);
 
-                    alert('Uploading file...');
+                    button.innerText = 'Uploading...';
 
                     const response = await fetch(
                         'http://localhost:3001/upload',
@@ -64,24 +97,24 @@ socket.on("online-users", (users) => {
                         downloadUrl: result.downloadUrl
                     });
 
-                    alert('Transfer sent');
+                    button.innerText = 'Transfer Sent';
                 };
 
                 input.click();
             };
 
-            usersDiv.appendChild(button);
+            usersDiv.appendChild(card);
         }
     });
 });
 
 socket.on("incoming-transfer", (data) => {
 
-    const confirmDownload = confirm(
-        `Incoming File From ${data.from}\n\n${data.fileName}\n\nDownload?`
+    const accept = confirm(
+        `Incoming File\n\n${data.fileName}\n\nFrom ${data.from}`
     );
 
-    if (confirmDownload) {
+    if (accept) {
 
         window.open(data.downloadUrl, '_blank');
     }
