@@ -1,238 +1,327 @@
 import { io } from "socket.io-client";
 
-const SERVER_URL = "http://localhost:3001";
+const socket = io("https://portal.nyumbaiitutv.co.ke", {
+    transports: ["websocket", "polling"]
+});
 
-const socket = io(SERVER_URL);
+window.socket = socket;
 
-const usernameMeta = document.querySelector(
-    'meta[name="device-name"]'
-);
+socket.on("connect", () => {
 
-const username = usernameMeta
-    ? usernameMeta.content
-    : null;
+    console.log("Connected:", socket.id);
 
-/*
-|--------------------------------------------------------------------------
-| REGISTER DEVICE
-|--------------------------------------------------------------------------
-*/
+    const deviceName =
+        document
+            .querySelector('meta[name="device-name"]')
+            ?.content;
 
-if (username) {
+    if (deviceName) {
 
-    socket.on("connect", () => {
-
-        console.log("Connected");
-
-        socket.emit("register", username);
-    });
-}
-
-/*
-|--------------------------------------------------------------------------
-| ONLINE USERS
-|--------------------------------------------------------------------------
-*/
+        socket.emit(
+            "register",
+            deviceName
+        );
+    }
+});
 
 socket.on("online-users", (users) => {
 
-    const usersDiv = document.getElementById("users");
+    const usersDiv =
+        document.getElementById("users");
 
     if (!usersDiv) return;
 
     usersDiv.innerHTML = "";
 
-    users.forEach(user => {
+    const currentDevice =
+        document
+            .querySelector('meta[name="device-name"]')
+            ?.content;
 
-        if (user !== username) {
+    users.forEach((user) => {
 
-            const card = document.createElement("div");
+        if (user === currentDevice) return;
 
-            card.className = `
-                bg-slate-900
-                border
-                border-slate-800
-                rounded-3xl
-                p-6
+        const card =
+            document.createElement("div");
+
+        card.className =
+            `
+            bg-slate-900
+            border
+            border-slate-800
+            rounded-3xl
+            p-6
+            flex
+            flex-col
+            gap-5
             `;
 
-            card.innerHTML = `
-                <div class="flex items-start justify-between">
+        card.innerHTML = `
+            <div class="flex items-center justify-between">
 
-                    <div>
+                <div>
 
-                        <h2 class="text-3xl font-black">
-                            ${user}
-                        </h2>
+                    <h3 class="text-2xl font-black">
+                        ${user}
+                    </h3>
 
-                        <div class="flex items-center mt-3">
-                            <div
-                                class="
-                                    w-3
-                                    h-3
-                                    rounded-full
-                                    bg-green-500
-                                    mr-2
-                                "
-                            ></div>
-
-                            <span class="text-slate-400">
-                                Online
-                            </span>
-                        </div>
-
-                    </div>
+                    <p class="text-slate-400 mt-1">
+                        Ready to receive files
+                    </p>
 
                 </div>
 
-                <button
+                <div
                     class="
-                        send-btn
-                        mt-8
-                        w-full
-                        bg-blue-600
-                        hover:bg-blue-500
-                        transition-all
-                        rounded-2xl
-                        py-4
-                        font-bold
-                        text-lg
+                        w-3
+                        h-3
+                        rounded-full
+                        bg-green-500
                     "
-                >
-                    Send File
-                </button>
-            `;
+                ></div>
 
-            /*
-            |--------------------------------------------------------------------------
-            | SEND FILE
-            |--------------------------------------------------------------------------
-            */
+            </div>
 
-            const button = card.querySelector(".send-btn");
+            <button
+                class="
+                    send-btn
+                    bg-blue-600
+                    hover:bg-blue-500
+                    transition-all
+                    rounded-2xl
+                    py-4
+                    font-bold
+                "
+                data-user="${user}"
+            >
+                Send File
+            </button>
+        `;
 
-            button.onclick = () => {
+        usersDiv.appendChild(card);
+    });
 
-                const input = document.createElement("input");
+    attachSendEvents();
+});
 
-                input.type = "file";
+function attachSendEvents() {
 
-                input.onchange = async (e) => {
+    document
+        .querySelectorAll(".send-btn")
+        .forEach((button) => {
 
-                    const file = e.target.files[0];
+            button.onclick = async () => {
 
-                    if (!file) return;
+                const to =
+                    button.dataset.user;
 
-                    const formData = new FormData();
+                const fileInput =
+                    document.getElementById(
+                        "file-input"
+                    );
 
-                    formData.append("file", file);
+                const file =
+                    fileInput.files[0];
 
-                    button.innerText = "Uploading...";
+                if (!file) {
 
-                    try {
+                    alert(
+                        "Select a file first"
+                    );
 
-                        const response = await fetch(
-                            `${SERVER_URL}/upload`,
-                            {
-                                method: "POST",
-                                body: formData
-                            }
-                        );
+                    return;
+                }
 
-                        const result = await response.json();
+                const formData =
+                    new FormData();
 
-                        console.log(result);
+                formData.append(
+                    "file",
+                    file
+                );
 
-                        socket.emit("send-transfer", {
-                            from: username,
-                            to: user,
-                            fileName: result.fileName,
-                            downloadUrl: result.downloadUrl
-                        });
+                const progressBar =
+                    document.getElementById(
+                        "progress-bar"
+                    );
 
-                        button.innerText = "Transfer Sent";
+                const progressText =
+                    document.getElementById(
+                        "progress-text"
+                    );
 
-                    } catch (error) {
+                const xhr =
+                    new XMLHttpRequest();
 
-                        console.error(error);
+                xhr.upload.onprogress = (
+                    event
+                ) => {
 
-                        button.innerText = "Failed";
+                    if (
+                        event.lengthComputable
+                    ) {
+
+                        const percent =
+                            Math.round(
+                                (
+                                    event.loaded /
+                                    event.total
+                                ) * 100
+                            );
+
+                        progressBar.style.width =
+                            percent + "%";
+
+                        progressText.innerText =
+                            percent + "%";
                     }
                 };
 
-                input.click();
-            };
+                xhr.onload = () => {
 
-            usersDiv.appendChild(card);
+                    const response =
+                        JSON.parse(
+                            xhr.responseText
+                        );
+
+                    socket.emit(
+                        "send-transfer",
+                        {
+                            to,
+                            from:
+                                document
+                                    .querySelector(
+                                        'meta[name="device-name"]'
+                                    )
+                                    ?.content,
+                            fileName:
+                                response.fileName,
+                            downloadUrl:
+                                response.downloadUrl
+                        }
+                    );
+
+                    progressText.innerText =
+                        "Completed";
+
+                    alert(
+                        "File sent successfully"
+                    );
+                };
+
+                xhr.open(
+                    "POST",
+                    "https://portal.nyumbaiitutv.co.ke/upload"
+                );
+
+                xhr.send(formData);
+            };
+        });
+}
+
+socket.on(
+    "incoming-transfer",
+    (data) => {
+
+        const autoDownload =
+            confirm(
+                `${data.from} sent ${data.fileName}\n\nDownload now?`
+            );
+
+        if (autoDownload) {
+
+            const a =
+                document.createElement("a");
+
+            a.href =
+                data.downloadUrl;
+
+            a.download =
+                data.fileName;
+
+            document.body.appendChild(a);
+
+            a.click();
+
+            a.remove();
         }
-    });
-});
+    }
+);
 
 /*
 |--------------------------------------------------------------------------
-| RECEIVE FILE
+| DRAG & DROP
 |--------------------------------------------------------------------------
 */
 
-socket.on("incoming-transfer", (data) => {
-
-    console.log(data);
-
-    const accept = confirm(
-        `Incoming File\n\n${data.fileName}\n\nFrom ${data.from}`
+const dropZone =
+    document.getElementById(
+        "drop-zone"
     );
 
-    if (accept) {
+const fileInput =
+    document.getElementById(
+        "file-input"
+    );
 
-        const link = document.createElement('a');
+const selectedFile =
+    document.getElementById(
+        "selected-file"
+    );
 
-        link.href = data.downloadUrl;
+if (dropZone && fileInput) {
 
-        link.download = data.fileName;
+    dropZone.addEventListener(
+        "dragover",
+        (e) => {
 
-        document.body.appendChild(link);
+            e.preventDefault();
 
-        link.click();
+            dropZone.classList.add(
+                "border-blue-500"
+            );
+        }
+    );
 
-        document.body.removeChild(link);
+    dropZone.addEventListener(
+        "dragleave",
+        () => {
+
+            dropZone.classList.remove(
+                "border-blue-500"
+            );
+        }
+    );
+
+    dropZone.addEventListener(
+        "drop",
+        (e) => {
+
+            e.preventDefault();
+
+            dropZone.classList.remove(
+                "border-blue-500"
+            );
+
+            fileInput.files =
+                e.dataTransfer.files;
+
+            updateFileName();
+        }
+    );
+
+    fileInput.addEventListener(
+        "change",
+        updateFileName
+    );
+}
+
+function updateFileName() {
+
+    if (fileInput.files.length > 0) {
+
+        selectedFile.innerText =
+            fileInput.files[0].name;
     }
-});
-
-/*
-|--------------------------------------------------------------------------
-| DEVICE FORM
-|--------------------------------------------------------------------------
-*/
-
-const form = document.getElementById("device-form");
-
-if (form) {
-
-    form.addEventListener("submit", async (e) => {
-
-        e.preventDefault();
-
-        const value = document
-            .getElementById("device-input")
-            .value;
-
-        await fetch("/device-name", {
-
-            method: "POST",
-
-            headers: {
-                "Content-Type": "application/json",
-
-                "X-CSRF-TOKEN": document
-                    .querySelector('meta[name="csrf-token"]')
-                    .content
-            },
-
-            body: JSON.stringify({
-                device_name: value
-            })
-        });
-
-        location.reload();
-    });
 }

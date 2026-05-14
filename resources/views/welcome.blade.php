@@ -35,12 +35,13 @@
         <!-- SIDEBAR -->
         <aside
             class="
+                hidden
+                lg:flex
                 w-80
                 bg-slate-900/90
                 border-r
                 border-slate-800
                 p-8
-                flex
                 flex-col
                 justify-between
             "
@@ -274,7 +275,44 @@
         </aside>
 
         <!-- MAIN -->
-        <main class="flex-1 p-10 overflow-y-auto">
+        <main class="flex-1 p-5 md:p-8 lg:p-10 overflow-y-auto">
+
+            <!-- MOBILE LOGO -->
+            <div class="lg:hidden mb-8">
+
+                <div class="flex items-center gap-4">
+
+                    <div
+                        class="
+                            w-14
+                            h-14
+                            rounded-2xl
+                            bg-blue-600
+                            flex
+                            items-center
+                            justify-center
+                            text-2xl
+                            font-black
+                        "
+                    >
+                        F
+                    </div>
+
+                    <div>
+
+                        <h1 class="text-4xl font-black">
+                            FileFlow
+                        </h1>
+
+                        <p class="text-slate-400 text-sm mt-1">
+                            Broadcast Transfer System
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
 
             <!-- HEADER -->
             <div
@@ -289,7 +327,8 @@
 
                     <h2
                         class="
-                            text-5xl
+                            text-3xl
+                            md:text-5xl
                             font-black
                             tracking-tight
                         "
@@ -301,7 +340,8 @@
                         class="
                             text-slate-400
                             mt-3
-                            text-lg
+                            text-base
+                            md:text-lg
                         "
                     >
                         Live broadcast systems connected to FileFlow
@@ -319,10 +359,207 @@
                     grid-cols-1
                     md:grid-cols-2
                     xl:grid-cols-3
-                    gap-8
+                    gap-6
                     mt-12
                 "
             ></div>
+
+            <!-- FILE TRANSFER PANEL -->
+
+            <div
+                class="
+                    mt-12
+                    bg-slate-900
+                    border
+                    border-slate-800
+                    rounded-3xl
+                    p-5
+                    md:p-8
+                "
+            >
+
+                <div
+                    class="
+                        flex
+                        flex-col
+                        lg:flex-row
+                        lg:items-center
+                        lg:justify-between
+                        gap-6
+                    "
+                >
+
+                    <div>
+
+                        <h2
+                            class="
+                                text-2xl
+                                md:text-3xl
+                                font-black
+                            "
+                        >
+                            Send Files
+                        </h2>
+
+                        <p
+                            class="
+                                text-slate-400
+                                mt-2
+                            "
+                        >
+                            Drag files or select files to transfer instantly
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <!-- DROP ZONE -->
+
+                <label
+                    id="drop-zone"
+                    class="
+                        mt-8
+                        border-2
+                        border-dashed
+                        border-slate-700
+                        hover:border-blue-500
+                        transition-all
+                        rounded-3xl
+                        p-8
+                        md:p-16
+                        flex
+                        flex-col
+                        items-center
+                        justify-center
+                        text-center
+                        cursor-pointer
+                        bg-slate-950/50
+                    "
+                >
+
+                    <input
+                        type="file"
+                        id="file-input"
+                        class="hidden"
+                    >
+
+                    <div class="text-6xl md:text-7xl">
+                        📂
+                    </div>
+
+                    <h3
+                        class="
+                            text-xl
+                            md:text-2xl
+                            font-black
+                            mt-6
+                        "
+                    >
+                        Drag & Drop Files
+                    </h3>
+
+                    <p
+                        class="
+                            text-slate-400
+                            mt-3
+                            text-sm
+                            md:text-base
+                        "
+                    >
+                        or click here to browse files
+                    </p>
+
+                </label>
+
+                <!-- FILE NAME -->
+
+                <div
+                    class="
+                        mt-6
+                        bg-slate-950
+                        border
+                        border-slate-800
+                        rounded-2xl
+                        p-5
+                    "
+                >
+
+                    <p
+                        class="
+                            text-slate-400
+                            text-sm
+                        "
+                    >
+                        Selected File
+                    </p>
+
+                    <p
+                        id="selected-file"
+                        class="
+                            mt-2
+                            font-semibold
+                            break-all
+                        "
+                    >
+                        No file selected
+                    </p>
+
+                </div>
+
+                <!-- PROGRESS -->
+
+                <div class="mt-8">
+
+                    <div
+                        class="
+                            flex
+                            items-center
+                            justify-between
+                            mb-3
+                        "
+                    >
+
+                        <span class="font-semibold">
+                            Transfer Progress
+                        </span>
+
+                        <span
+                            id="progress-text"
+                            class="text-slate-400"
+                        >
+                            0%
+                        </span>
+
+                    </div>
+
+                    <div
+                        class="
+                            w-full
+                            h-5
+                            bg-slate-800
+                            rounded-full
+                            overflow-hidden
+                        "
+                    >
+
+                        <div
+                            id="progress-bar"
+                            class="
+                                h-full
+                                bg-blue-600
+                                rounded-full
+                                transition-all
+                                duration-300
+                            "
+                            style="width:0%"
+                        ></div>
+
+                    </div>
+
+                </div>
+
+            </div>
 
             <!-- ACTIVITY -->
             <div class="mt-16">
