@@ -41,7 +41,7 @@ if (deviceForm) {
                     "device-input"
                 ).value;
 
-            await fetch("/set-device", {
+            await fetch("/device-name", {
                 method: "POST",
 
                 headers: {
