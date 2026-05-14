@@ -1,6 +1,22 @@
 import io from "socket.io-client";
 
-const socket = io("https://portal.nyumbaiitutv.co.ke:3001");
+/*
+|--------------------------------------------------------------------------
+| SOCKET CONNECTION
+|--------------------------------------------------------------------------
+*/
+
+const socket = io(
+    "http://178.104.181.9:3001"
+);
+
+window.socket = socket;
+
+/*
+|--------------------------------------------------------------------------
+| CURRENT DEVICE
+|--------------------------------------------------------------------------
+*/
 
 const currentDevice =
     document
@@ -8,6 +24,12 @@ const currentDevice =
             'meta[name="device-name"]'
         )
         ?.getAttribute("content");
+
+/*
+|--------------------------------------------------------------------------
+| REGISTER DEVICE
+|--------------------------------------------------------------------------
+*/
 
 if (currentDevice) {
 
@@ -36,30 +58,45 @@ if (deviceForm) {
 
             e.preventDefault();
 
-            const name =
+            const input =
                 document.getElementById(
                     "device-input"
-                ).value;
+                );
 
-            await fetch("/device-name", {
-                method: "POST",
+            const name =
+                input.value.trim();
 
-                headers: {
-                    "Content-Type":
-                        "application/json",
+            if (!name) {
 
-                    "X-CSRF-TOKEN":
-                        document
-                            .querySelector(
-                                'meta[name="csrf-token"]'
-                            )
-                            .content
-                },
+                alert(
+                    "Please enter a device name."
+                );
 
-                body: JSON.stringify({
-                    device_name: name
-                })
-            });
+                return;
+            }
+
+            await fetch(
+                "/device-name",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+
+                        "X-CSRF-TOKEN":
+                            document
+                                .querySelector(
+                                    'meta[name="csrf-token"]'
+                                )
+                                .content
+                    },
+
+                    body: JSON.stringify({
+                        device_name: name
+                    })
+                }
+            );
 
             location.reload();
         }
@@ -75,7 +112,7 @@ if (deviceForm) {
 let selectedReceiver = null;
 
 socket.on(
-    "online-users",
+    "users",
     (users) => {
 
         const usersContainer =
@@ -98,16 +135,17 @@ socket.on(
                     "div"
                 );
 
-            card.className = `
-                bg-slate-900
+            card.className =
+                `
+                bg-slate-800
                 border
-                border-slate-800
+                border-slate-700
                 rounded-3xl
-                p-6
+                p-5
                 cursor-pointer
                 hover:border-blue-500
                 transition-all
-            `;
+                `;
 
             card.innerHTML = `
                 <div class="flex items-center justify-between">
@@ -118,7 +156,7 @@ socket.on(
                             ${user}
                         </h2>
 
-                        <p class="text-slate-400 mt-2">
+                        <p class="text-slate-400 mt-2 text-sm">
                             Online Device
                         </p>
 
@@ -126,8 +164,8 @@ socket.on(
 
                     <div
                         class="
-                            w-4
-                            h-4
+                            w-3
+                            h-3
                             rounded-full
                             bg-green-500
                         "
@@ -143,11 +181,9 @@ socket.on(
                     selectedReceiver =
                         user;
 
-                    document
-                        .getElementById(
-                            "selected-user"
-                        )
-                        .innerText =
+                    document.getElementById(
+                        "selected-user"
+                    ).innerText =
                         user;
 
                     const indicator =
@@ -155,16 +191,13 @@ socket.on(
                             "receiver-indicator"
                         );
 
-                    if (indicator) {
+                    indicator.classList.remove(
+                        "bg-slate-700"
+                    );
 
-                        indicator.classList.remove(
-                            "bg-slate-700"
-                        );
-
-                        indicator.classList.add(
-                            "bg-green-500"
-                        );
-                    }
+                    indicator.classList.add(
+                        "bg-green-500"
+                    );
 
                     document
                         .querySelectorAll(
@@ -192,7 +225,7 @@ socket.on(
 
 /*
 |--------------------------------------------------------------------------
-| FILE TRANSFER
+| FILE ELEMENTS
 |--------------------------------------------------------------------------
 */
 
@@ -221,12 +254,18 @@ const progressText =
         "progress-text"
     );
 
+/*
+|--------------------------------------------------------------------------
+| FILE UPLOAD
+|--------------------------------------------------------------------------
+*/
+
 function uploadFile(file) {
 
     if (!selectedReceiver) {
 
         alert(
-            "Please select a receiver device first."
+            "Please select a receiver first."
         );
 
         return;
@@ -297,6 +336,12 @@ function uploadFile(file) {
             }
         );
 
+        progressBar.style.width =
+            "100%";
+
+        progressText.innerText =
+            "100%";
+
         alert(
             "File sent successfully."
         );
@@ -332,7 +377,7 @@ if (fileInput) {
 
 /*
 |--------------------------------------------------------------------------
-| DRAG DROP
+| DRAG & DROP
 |--------------------------------------------------------------------------
 */
 
