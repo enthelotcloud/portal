@@ -10,6 +10,7 @@
 <body>
     <h1 class="text-3xl font-bold underline">
         Hello world!
+        <div id="users"></div>
     </h1>
 </body>
 </html>
