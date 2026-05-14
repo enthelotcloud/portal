@@ -26,18 +26,27 @@ const currentDevice =
         ?.getAttribute("content");
 
 /*
+/*
 |--------------------------------------------------------------------------
 | REGISTER DEVICE
 |--------------------------------------------------------------------------
 */
 
-if (currentDevice) {
+socket.on("connect", () => {
 
-    socket.emit(
-        "register",
-        currentDevice
+    console.log(
+        "Socket connected:",
+        socket.id
     );
-}
+
+    if (currentDevice) {
+
+        socket.emit(
+            "register",
+            currentDevice
+        );
+    }
+});
 
 /*
 |--------------------------------------------------------------------------
