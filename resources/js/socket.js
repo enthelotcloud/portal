@@ -1,276 +1,342 @@
-import { io } from "socket.io-client";
+import io from "socket.io-client";
 
-const socket = io("https://portal.nyumbaiitutv.co.ke", {
-    transports: ["websocket", "polling"]
-});
+const socket = io("https://portal.nyumbaiitutv.co.ke:3001");
 
-window.socket = socket;
-
-socket.on("connect", () => {
-
-    console.log("Connected:", socket.id);
-
-    const deviceName =
-        document
-            .querySelector('meta[name="device-name"]')
-            ?.content;
-
-    if (deviceName) {
-
-        socket.emit(
-            "register",
-            deviceName
-        );
-    }
-});
-
-socket.on("online-users", (users) => {
-
-    const usersDiv =
-        document.getElementById("users");
-
-    if (!usersDiv) return;
-
-    usersDiv.innerHTML = "";
-
-    const currentDevice =
-        document
-            .querySelector('meta[name="device-name"]')
-            ?.content;
-
-    users.forEach((user) => {
-
-        if (user === currentDevice) return;
-
-        const card =
-            document.createElement("div");
-
-        card.className =
-            `
-            bg-slate-900
-            border
-            border-slate-800
-            rounded-3xl
-            p-6
-            flex
-            flex-col
-            gap-5
-            `;
-
-        card.innerHTML = `
-            <div class="flex items-center justify-between">
-
-                <div>
-
-                    <h3 class="text-2xl font-black">
-                        ${user}
-                    </h3>
-
-                    <p class="text-slate-400 mt-1">
-                        Ready to receive files
-                    </p>
-
-                </div>
-
-                <div
-                    class="
-                        w-3
-                        h-3
-                        rounded-full
-                        bg-green-500
-                    "
-                ></div>
-
-            </div>
-
-            <button
-                class="
-                    send-btn
-                    bg-blue-600
-                    hover:bg-blue-500
-                    transition-all
-                    rounded-2xl
-                    py-4
-                    font-bold
-                "
-                data-user="${user}"
-            >
-                Send File
-            </button>
-        `;
-
-        usersDiv.appendChild(card);
-    });
-
-    attachSendEvents();
-});
-
-function attachSendEvents() {
-
+const currentDevice =
     document
-        .querySelectorAll(".send-btn")
-        .forEach((button) => {
+        .querySelector(
+            'meta[name="device-name"]'
+        )
+        ?.getAttribute("content");
 
-            button.onclick = async () => {
+if (currentDevice) {
 
-                const to =
-                    button.dataset.user;
-
-                const fileInput =
-                    document.getElementById(
-                        "file-input"
-                    );
-
-                const file =
-                    fileInput.files[0];
-
-                if (!file) {
-
-                    alert(
-                        "Select a file first"
-                    );
-
-                    return;
-                }
-
-                const formData =
-                    new FormData();
-
-                formData.append(
-                    "file",
-                    file
-                );
-
-                const progressBar =
-                    document.getElementById(
-                        "progress-bar"
-                    );
-
-                const progressText =
-                    document.getElementById(
-                        "progress-text"
-                    );
-
-                const xhr =
-                    new XMLHttpRequest();
-
-                xhr.upload.onprogress = (
-                    event
-                ) => {
-
-                    if (
-                        event.lengthComputable
-                    ) {
-
-                        const percent =
-                            Math.round(
-                                (
-                                    event.loaded /
-                                    event.total
-                                ) * 100
-                            );
-
-                        progressBar.style.width =
-                            percent + "%";
-
-                        progressText.innerText =
-                            percent + "%";
-                    }
-                };
-
-                xhr.onload = () => {
-
-                    const response =
-                        JSON.parse(
-                            xhr.responseText
-                        );
-
-                    socket.emit(
-                        "send-transfer",
-                        {
-                            to,
-                            from:
-                                document
-                                    .querySelector(
-                                        'meta[name="device-name"]'
-                                    )
-                                    ?.content,
-                            fileName:
-                                response.fileName,
-                            downloadUrl:
-                                response.downloadUrl
-                        }
-                    );
-
-                    progressText.innerText =
-                        "Completed";
-
-                    alert(
-                        "File sent successfully"
-                    );
-                };
-
-                xhr.open(
-                    "POST",
-                    "https://portal.nyumbaiitutv.co.ke/upload"
-                );
-
-                xhr.send(formData);
-            };
-        });
+    socket.emit(
+        "register",
+        currentDevice
+    );
 }
 
-socket.on(
-    "incoming-transfer",
-    (data) => {
+/*
+|--------------------------------------------------------------------------
+| DEVICE FORM
+|--------------------------------------------------------------------------
+*/
 
-        const autoDownload =
-            confirm(
-                `${data.from} sent ${data.fileName}\n\nDownload now?`
+const deviceForm =
+    document.getElementById(
+        "device-form"
+    );
+
+if (deviceForm) {
+
+    deviceForm.addEventListener(
+        "submit",
+        async (e) => {
+
+            e.preventDefault();
+
+            const name =
+                document.getElementById(
+                    "device-input"
+                ).value;
+
+            await fetch("/set-device", {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json",
+
+                    "X-CSRF-TOKEN":
+                        document
+                            .querySelector(
+                                'meta[name="csrf-token"]'
+                            )
+                            .content
+                },
+
+                body: JSON.stringify({
+                    device_name: name
+                })
+            });
+
+            location.reload();
+        }
+    );
+}
+
+/*
+|--------------------------------------------------------------------------
+| USERS
+|--------------------------------------------------------------------------
+*/
+
+let selectedReceiver = null;
+
+socket.on(
+    "online-users",
+    (users) => {
+
+        const usersContainer =
+            document.getElementById(
+                "users"
             );
 
-        if (autoDownload) {
+        if (!usersContainer) return;
 
-            const a =
-                document.createElement("a");
+        usersContainer.innerHTML = "";
 
-            a.href =
-                data.downloadUrl;
+        users.forEach((user) => {
 
-            a.download =
-                data.fileName;
+            if (
+                user === currentDevice
+            ) return;
 
-            document.body.appendChild(a);
+            const card =
+                document.createElement(
+                    "div"
+                );
 
-            a.click();
+            card.className = `
+                bg-slate-900
+                border
+                border-slate-800
+                rounded-3xl
+                p-6
+                cursor-pointer
+                hover:border-blue-500
+                transition-all
+            `;
 
-            a.remove();
-        }
+            card.innerHTML = `
+                <div class="flex items-center justify-between">
+
+                    <div>
+
+                        <h2 class="text-2xl font-black">
+                            ${user}
+                        </h2>
+
+                        <p class="text-slate-400 mt-2">
+                            Online Device
+                        </p>
+
+                    </div>
+
+                    <div
+                        class="
+                            w-4
+                            h-4
+                            rounded-full
+                            bg-green-500
+                        "
+                    ></div>
+
+                </div>
+            `;
+
+            card.addEventListener(
+                "click",
+                () => {
+
+                    selectedReceiver =
+                        user;
+
+                    document
+                        .getElementById(
+                            "selected-user"
+                        )
+                        .innerText =
+                        user;
+
+                    const indicator =
+                        document.getElementById(
+                            "receiver-indicator"
+                        );
+
+                    if (indicator) {
+
+                        indicator.classList.remove(
+                            "bg-slate-700"
+                        );
+
+                        indicator.classList.add(
+                            "bg-green-500"
+                        );
+                    }
+
+                    document
+                        .querySelectorAll(
+                            "#users > div"
+                        )
+                        .forEach((el) => {
+
+                            el.classList.remove(
+                                "border-blue-500"
+                            );
+                        });
+
+                    card.classList.add(
+                        "border-blue-500"
+                    );
+                }
+            );
+
+            usersContainer.appendChild(
+                card
+            );
+        });
     }
 );
 
 /*
 |--------------------------------------------------------------------------
-| DRAG & DROP
+| FILE TRANSFER
 |--------------------------------------------------------------------------
 */
-
-const dropZone =
-    document.getElementById(
-        "drop-zone"
-    );
 
 const fileInput =
     document.getElementById(
         "file-input"
     );
 
-const selectedFile =
+const dropZone =
+    document.getElementById(
+        "drop-zone"
+    );
+
+const selectedFileText =
     document.getElementById(
         "selected-file"
     );
 
-if (dropZone && fileInput) {
+const progressBar =
+    document.getElementById(
+        "progress-bar"
+    );
+
+const progressText =
+    document.getElementById(
+        "progress-text"
+    );
+
+function uploadFile(file) {
+
+    if (!selectedReceiver) {
+
+        alert(
+            "Please select a receiver device first."
+        );
+
+        return;
+    }
+
+    const formData =
+        new FormData();
+
+    formData.append(
+        "file",
+        file
+    );
+
+    const xhr =
+        new XMLHttpRequest();
+
+    xhr.open(
+        "POST",
+        "https://portal.nyumbaiitutv.co.ke/upload"
+    );
+
+    xhr.upload.addEventListener(
+        "progress",
+        (e) => {
+
+            if (
+                e.lengthComputable
+            ) {
+
+                const percent =
+                    Math.round(
+                        (
+                            e.loaded /
+                            e.total
+                        ) * 100
+                    );
+
+                progressBar.style.width =
+                    percent + "%";
+
+                progressText.innerText =
+                    percent + "%";
+            }
+        }
+    );
+
+    xhr.onload = () => {
+
+        const response =
+            JSON.parse(
+                xhr.responseText
+            );
+
+        socket.emit(
+            "send-transfer",
+            {
+                from:
+                    currentDevice,
+
+                to:
+                    selectedReceiver,
+
+                fileName:
+                    response.fileName,
+
+                downloadUrl:
+                    response.downloadUrl
+            }
+        );
+
+        alert(
+            "File sent successfully."
+        );
+    };
+
+    xhr.send(formData);
+}
+
+/*
+|--------------------------------------------------------------------------
+| FILE INPUT
+|--------------------------------------------------------------------------
+*/
+
+if (fileInput) {
+
+    fileInput.addEventListener(
+        "change",
+        (e) => {
+
+            const file =
+                e.target.files[0];
+
+            if (!file) return;
+
+            selectedFileText.innerText =
+                file.name;
+
+            uploadFile(file);
+        }
+    );
+}
+
+/*
+|--------------------------------------------------------------------------
+| DRAG DROP
+|--------------------------------------------------------------------------
+*/
+
+if (dropZone) {
 
     dropZone.addEventListener(
         "dragover",
@@ -304,24 +370,51 @@ if (dropZone && fileInput) {
                 "border-blue-500"
             );
 
-            fileInput.files =
-                e.dataTransfer.files;
+            const file =
+                e.dataTransfer
+                    .files[0];
 
-            updateFileName();
+            if (!file) return;
+
+            selectedFileText.innerText =
+                file.name;
+
+            uploadFile(file);
         }
     );
-
-    fileInput.addEventListener(
-        "change",
-        updateFileName
-    );
 }
 
-function updateFileName() {
+/*
+|--------------------------------------------------------------------------
+| RECEIVE FILE
+|--------------------------------------------------------------------------
+*/
 
-    if (fileInput.files.length > 0) {
+socket.on(
+    "incoming-transfer",
+    (data) => {
 
-        selectedFile.innerText =
-            fileInput.files[0].name;
+        const link =
+            document.createElement(
+                "a"
+            );
+
+        link.href =
+            data.downloadUrl;
+
+        link.download =
+            data.fileName;
+
+        document.body.appendChild(
+            link
+        );
+
+        link.click();
+
+        link.remove();
+
+        alert(
+            `${data.from} sent ${data.fileName}`
+        );
     }
-}
+);
