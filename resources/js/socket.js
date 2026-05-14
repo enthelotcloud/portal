@@ -1,121 +1,169 @@
 import { io } from "socket.io-client";
 
-const socket = io("http://localhost:3001");
+const usernameMeta = document.querySelector(
+    'meta[name="device-name"]'
+);
 
-const username = prompt("Enter Device Name");
+const username = usernameMeta
+    ? usernameMeta.content
+    : null;
 
-document.getElementById('device-name').innerText = username;
+if (username) {
 
-socket.on("connect", () => {
+    const socket = io("http://localhost:3001");
 
-    socket.emit("register", username);
-});
+    socket.on("connect", () => {
 
-socket.on("online-users", (users) => {
+        socket.emit("register", username);
+    });
 
-    const usersDiv = document.getElementById('users');
+    socket.on("online-users", (users) => {
 
-    usersDiv.innerHTML = '';
+        const usersDiv = document.getElementById('users');
 
-    users.forEach(user => {
+        if (!usersDiv) return;
 
-        if (user !== username) {
+        usersDiv.innerHTML = '';
 
-            const card = document.createElement('div');
+        users.forEach(user => {
 
-            card.className =
-                'bg-slate-900 border border-slate-800 rounded-3xl p-6';
+            if (user !== username) {
 
-            card.innerHTML = `
-                <div class="flex items-center justify-between">
+                const card = document.createElement('div');
 
-                    <div>
-                        <h2 class="text-2xl font-black">
-                            ${user}
-                        </h2>
+                card.className = `
+                    bg-slate-900
+                    border
+                    border-slate-800
+                    rounded-3xl
+                    p-6
+                `;
 
-                        <div class="flex items-center mt-2">
-                            <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                card.innerHTML = `
+                    <div class="flex items-start justify-between">
 
-                            <span class="text-slate-400">
-                                Online
-                            </span>
+                        <div>
+
+                            <h2 class="text-3xl font-black">
+                                ${user}
+                            </h2>
+
+                            <div class="flex items-center mt-3">
+                                <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+
+                                <span class="text-slate-400">
+                                    Online
+                                </span>
+                            </div>
+
                         </div>
+
                     </div>
 
-                </div>
+                    <button
+                        class="
+                            send-btn
+                            mt-8
+                            w-full
+                            bg-blue-600
+                            hover:bg-blue-500
+                            transition-all
+                            rounded-2xl
+                            py-4
+                            font-bold
+                            text-lg
+                        "
+                    >
+                        Send File
+                    </button>
+                `;
 
-                <button
-                    class="
-                        mt-8
-                        w-full
-                        bg-blue-600
-                        hover:bg-blue-500
-                        transition
-                        rounded-2xl
-                        py-4
-                        font-bold
-                        text-lg
-                    "
-                >
-                    Send File
-                </button>
-            `;
+                const button = card.querySelector('.send-btn');
 
-            const button = card.querySelector('button');
+                button.onclick = async () => {
 
-            button.onclick = async () => {
+                    const input = document.createElement('input');
 
-                const input = document.createElement('input');
+                    input.type = 'file';
 
-                input.type = 'file';
+                    input.onchange = async (e) => {
 
-                input.onchange = async (e) => {
+                        const file = e.target.files[0];
 
-                    const file = e.target.files[0];
+                        const formData = new FormData();
 
-                    const formData = new FormData();
+                        formData.append('file', file);
 
-                    formData.append('file', file);
+                        button.innerText = 'Uploading...';
 
-                    button.innerText = 'Uploading...';
+                        const response = await fetch(
+                            'http://localhost:3001/upload',
+                            {
+                                method: 'POST',
+                                body: formData
+                            }
+                        );
 
-                    const response = await fetch(
-                        'http://localhost:3001/upload',
-                        {
-                            method: 'POST',
-                            body: formData
-                        }
-                    );
+                        const result = await response.json();
 
-                    const result = await response.json();
+                        socket.emit('send-transfer', {
+                            from: username,
+                            to: user,
+                            fileName: result.fileName,
+                            downloadUrl: result.downloadUrl
+                        });
 
-                    socket.emit('send-transfer', {
-                        from: username,
-                        to: user,
-                        fileName: result.fileName,
-                        downloadUrl: result.downloadUrl
-                    });
+                        button.innerText = 'Transfer Sent';
+                    };
 
-                    button.innerText = 'Transfer Sent';
+                    input.click();
                 };
 
-                input.click();
-            };
+                usersDiv.appendChild(card);
+            }
+        });
+    });
 
-            usersDiv.appendChild(card);
+    socket.on("incoming-transfer", (data) => {
+
+        const accept = confirm(
+            `Incoming File\n\n${data.fileName}\n\nFrom ${data.from}`
+        );
+
+        if (accept) {
+
+            window.open(data.downloadUrl, '_blank');
         }
     });
-});
+}
 
-socket.on("incoming-transfer", (data) => {
+const form = document.getElementById('device-form');
 
-    const accept = confirm(
-        `Incoming File\n\n${data.fileName}\n\nFrom ${data.from}`
-    );
+if (form) {
 
-    if (accept) {
+    form.addEventListener('submit', async (e) => {
 
-        window.open(data.downloadUrl, '_blank');
-    }
-});
+        e.preventDefault();
+
+        const value = document
+            .getElementById('device-input')
+            .value;
+
+        await fetch('/device-name', {
+            method: 'POST',
+
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document
+                    .querySelector('meta[name="csrf-token"]')
+                    .content
+            },
+
+            body: JSON.stringify({
+                device_name: value
+            })
+        });
+
+        location.reload();
+    });
+}
