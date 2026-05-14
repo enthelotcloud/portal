@@ -184,7 +184,17 @@ socket.on("incoming-transfer", (data) => {
 
     if (accept) {
 
-        window.open(data.downloadUrl, "_blank");
+        const link = document.createElement('a');
+
+        link.href = data.downloadUrl;
+
+        link.download = data.fileName;
+
+        document.body.appendChild(link);
+
+        link.click();
+
+        document.body.removeChild(link);
     }
 });
 
